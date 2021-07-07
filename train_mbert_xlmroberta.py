@@ -36,7 +36,7 @@ SEEDS = [*range(1000, 1003, 1)]
 AUTO = tf.data.experimental.AUTOTUNE
 
 # Set Batch Size
-BASE_BATCH_SIZE = 4         # Modify to match your GPU card.
+BASE_BATCH_SIZE = 3         # Modify to match your GPU card.
 if tpu is not None:         
     BASE_BATCH_SIZE = 8     # TPU v2 or up...
 BATCH_SIZE = BASE_BATCH_SIZE * strategy.num_replicas_in_sync
@@ -120,9 +120,9 @@ for seed in SEEDS:
         validation_dataset = create_validation_dataset(val_input_ids, val_input_masks, val_labels, BATCH_SIZE)
 
         # Create Model
-        #if model_type == 'xlm-roberta-base': model = create_xlm_roberta_model_v1(strategy, config, lr)
+        #if model_type == 'xlm-roberta-base': model = create_xlm_roberta_model_v1(strategy, config, LR)
         if model_type == 'xlm-roberta-base': model = create_xlm_roberta_model_v2(strategy, config, MAX_LEN, LR)
-        #if model_type == 'bert-base-multilingual-cased': model = create_mbert_model_v1(model_type, strategy, config, lr)
+        #if model_type == 'bert-base-multilingual-cased': model = create_mbert_model_v1(model_type, strategy, config, LR)
         if model_type == 'bert-base-multilingual-cased': model = create_mbert_model_v2(model_type, strategy, config, MAX_LEN, LR)
 
         # Model Summary

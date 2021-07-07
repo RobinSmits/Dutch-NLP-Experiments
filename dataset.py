@@ -3,9 +3,11 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from tqdm import tqdm
+from transformers import *
+from typing import Tuple
 from urllib.request import urlopen
 
-def download_articles_by_publisher(cache_dir: str):
+def download_articles_by_publisher(cache_dir: str)->None:
     # URLs taken from: https://github.com/dpgmedia/partisan-news2019
     articles_by_publisher_url = 'https://partisan-news2019.s3-eu-west-1.amazonaws.com/dpgMedia2019-articles-bypublisher.jsonl'
     labels_by_publisher_url = 'https://github.com/dpgmedia/partisan-news2019/raw/master/dpgMedia2019-labels-bypublisher.jsonl'
@@ -58,7 +60,7 @@ def get_dpgnews_df(cache_dir: str)->pd.DataFrame:
 
     return dpgnews_df
 
-def tokenize_dpgnews_df(df: pd.DataFrame, max_len: int, tokenizer):
+def tokenize_dpgnews_df(df: pd.DataFrame, max_len: int, tokenizer: AutoTokenizer)->Tuple[np.ndarray, np.ndarray, np.ndarray]:
     total_samples = df.shape[0]
 
     # Placeholders input
@@ -81,16 +83,13 @@ def tokenize_dpgnews_df(df: pd.DataFrame, max_len: int, tokenizer):
         labels[index] = 1 if partisan == 'true' else 0
 
     # Return Arrays
-    return input_ids, input_masks, labels
+    return (input_ids, input_masks, labels)
    
-def create_dataset(input_ids: np.array, input_masks: np.array, labels: np.array):
-    # Create DatasetDictionary structure is also preserved.
-    dataset = tf.data.Dataset.from_tensor_slices(({'input_ids': input_ids, 'attention_mask': input_masks}, labels))
+def create_dataset(input_ids: np.ndarray, input_masks: np.ndarray, labels: np.ndarray)->tf.data.Dataset:
+    # Create and return Dataset. Dictionary structure is also preserved.
+    return tf.data.Dataset.from_tensor_slices(({'input_ids': input_ids, 'attention_mask': input_masks}, labels))
 
-    # Return Dataset
-    return dataset
-
-def create_train_dataset(input_ids: np.array, input_masks: np.array, labels: np.array, batch_size: int):
+def create_train_dataset(input_ids: np.ndarray, input_masks: np.ndarray, labels: np.ndarray, batch_size: int)->tf.data.Dataset:
     train_dataset = create_dataset(input_ids, input_masks, labels)
     train_dataset = train_dataset.shuffle(1024, reshuffle_each_iteration = True)
     train_dataset = train_dataset.batch(batch_size)
@@ -99,7 +98,7 @@ def create_train_dataset(input_ids: np.array, input_masks: np.array, labels: np.
 
     return train_dataset
 
-def create_validation_dataset(input_ids: np.array, input_masks: np.array, labels: np.array, batch_size: int):
+def create_validation_dataset(input_ids: np.ndarray, input_masks: np.ndarray, labels: np.ndarray, batch_size: int)->tf.data.Dataset:
     validation_dataset = create_dataset(input_ids, input_masks, labels)
     validation_dataset = validation_dataset.batch(batch_size)
     validation_dataset = validation_dataset.repeat(-1)

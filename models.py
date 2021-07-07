@@ -1,7 +1,7 @@
 import tensorflow as tf
 from transformers import *
 
-def ModelCheckpoint(model_name):
+def ModelCheckpoint(model_name: str)->tf.keras.callbacks.ModelCheckpoint:
     return tf.keras.callbacks.ModelCheckpoint(model_name, 
                                               monitor = 'val_accuracy', 
                                               verbose = 1, 
@@ -12,7 +12,7 @@ def ModelCheckpoint(model_name):
 
 ### XLM-RoBERTa ######################################################################################################
 
-def create_xlm_roberta_model_v1(strategy, config, lr):
+def create_xlm_roberta_model_v1(strategy: tf.distribute.Strategy, config: AutoConfig, lr: float)->tf.keras.Model:
     # Create 'Standard' Classification Model
     with strategy.scope():   
         model = TFXLMRobertaForSequenceClassification.from_pretrained('jplu/tf-xlm-roberta-base', config = config)
@@ -25,7 +25,7 @@ def create_xlm_roberta_model_v1(strategy, config, lr):
         
         return model
 
-def create_xlm_roberta_model_v2(strategy, config, max_len, lr):
+def create_xlm_roberta_model_v2(strategy: tf.distribute.Strategy, config: AutoConfig, max_len: int, lr: float)->tf.keras.Model:
     # Create Custom Model
     with strategy.scope():   
         input_ids = tf.keras.layers.Input(shape = (max_len,), dtype = tf.int32, name = 'input_ids')
@@ -54,7 +54,7 @@ def create_xlm_roberta_model_v2(strategy, config, max_len, lr):
 
 ### Multi-Lingual BERT ######################################################################################################
 
-def create_mbert_model_v1(model_type, strategy, config, lr):
+def create_mbert_model_v1(model_type: str, strategy: tf.distribute.Strategy, config: AutoConfig, lr: float)->tf.keras.Model:
     # Create 'Standard' Classification Model
     with strategy.scope():   
         model = TFBertForSequenceClassification.from_pretrained(model_type, config = config)
@@ -67,7 +67,7 @@ def create_mbert_model_v1(model_type, strategy, config, lr):
         
         return model
 
-def create_mbert_model_v2(model_type, strategy, config, max_len, lr):
+def create_mbert_model_v2(model_type: str, strategy: tf.distribute.Strategy, config: AutoConfig, max_len: int, lr: float)->tf.keras.Model:
     # Create Custom Model
     with strategy.scope():   
         input_ids = tf.keras.layers.Input(shape = (max_len,), dtype = tf.int32, name = 'input_ids')
