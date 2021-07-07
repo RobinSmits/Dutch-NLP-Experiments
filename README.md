@@ -25,7 +25,7 @@ Note! If anyone is aware of more multi-lingual models that support Dutch and you
 
 ## Dataset
 
-The dataset used in my experiment is the (DpgMedia2019: A Dutch News Dataset for Partisanship Detection)[https://github.com/dpgmedia/partisan-news2019] dataset.
+The dataset used in my experiment is the [DpgMedia2019: A Dutch News Dataset for Partisanship Detection](https://github.com/dpgmedia/partisan-news2019) dataset.
 It contains various parts but the main part I use is a set of about 104K news articles. For each article there is a label providing whether the article is partisan or not. The amount of partisan / non-partisan articles is roughly balanced.
 
 The dataset was created with the aim to contribute to for example create a partisan news detector. In the python code used in the experiments the specific dataset files are downloaded automatically. Checkout the github and paper for more information about the dataset and how it whas constructed. Also see the citation of the dataset below for the Arxiv paper identifier.
