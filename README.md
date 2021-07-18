@@ -26,9 +26,34 @@ Note! If anyone is aware of more multi-lingual models that support Dutch and you
 ## Dataset
 
 The dataset used in my experiment is the [DpgMedia2019: A Dutch News Dataset for Partisanship Detection](https://github.com/dpgmedia/partisan-news2019) dataset.
-It contains various parts but the main part I use is a set of about 104K news articles. For each article there is a label providing whether the article is partisan or not. The amount of partisan / non-partisan articles is roughly balanced.
+It contains various parts but the main part I use is a set of about 104K news articles. For each article there is a label 'partisan' stating whether the article is partisan or not (True/False). The amount of partisan / non-partisan articles is roughly balanced.
 
-The dataset was created with the aim to contribute to for example create a partisan news detector. In the python code used in the experiments the specific dataset files are downloaded automatically. Checkout the github and paper for more information about the dataset and how it whas constructed. Also see the citation of the dataset below for the Arxiv paper identifier.
+The dataset was created by the authors with the aim to contribute to for example create a partisan news detector. In the python code used in the experiments the specific dataset files are downloaded automatically. Checkout the github and paper for more information about the dataset and how it whas constructed. See the References for the information.
+
+## Multi-Lingual BERT and XLM-RoBERTa
+
+The python file 'train_mbert_xlmroberta.py' contains all the code to download and process the data. The training is performed based on 3 different rounds with each round containing a full 5 fold stratified Cross Validation training run. The average validation score is determined by taking the mean of the validation accuracy across all 15 trained models.
+
+Training was performed on Google Colab Pro TPUv2 hardware. With a batch_size of 64, learning rate of 0.00002, 3 epochs and the maximum token input length of 512 the training process for all 3 rounds with 5 fold CV's could be completed within about 6 to 7 hours.
+
+For both MBERT and XLM-RoBERTa I performed this process on 2 different model setup's:
+- For each model we used the default Huggingface Transformers SequenceClassification Models
+- For each model we used the the BaseModel (TFBertModel / TFRobertaModel) and added a custom classification head.
+
+The achieved performance can be seen in below table. XLM-RoBERTa scores slightly higher than MBERT...but with scores around 95-96% they are both excellent classifiers.
+
+| Transformer Model Type and Architecture | Average Validation Accuracy (%) Score |
+|:---------------|----------------:|
+| MBERT Standard Sequence Classification Model | 95.33 |
+| MBERT Custom Sequence Classification Model | 95.20 |
+| XLM-RoBERTa Standard Sequence Classification Model | 95.87 |
+| XLM-RoBERTa Custom Sequence Classification Model | 96.20  |
+
+## Exploratory Data Analysis
+
+<< To Be Documented Soon ... >>
+
+## References
 
 ```
 @misc{1908.02322,
@@ -38,26 +63,3 @@ The dataset was created with the aim to contribute to for example create a parti
   Eprint = {arXiv:1908.02322},
 }
 ```
-
-## Multi-Lingual BERT and XLM-RoBERTa
-
-The python file 'train_mbert_xlmroberta.py' contains all the code to download and process the data. The training is performed based on 3 different seed numbers. For each seed a full 5 fold stratified Cross Validation training run is performed. The average validation score is determined by taking the mean of the validation accuracy across all 15 trained models.
-
-Training was performed on Google Colab Pro TPUv2 hardware. With a batch_size of 64, learning rate of 0.00002, 3 epochs and the maximum token input length of 512 the training process for all 3 time 5 fold CV's could be completed within about 6 to 7 hours.
-
-For both MBERT and XLM-RoBERTa I performed this process on 2 different model setup's:
-- For each model we used the default Huggingface Transformers SequenceClassification Models
-- For each model we used the the BaseModel (TFBertModel / TFRobertaModel) and added a custom classification head.
-
-The achieved performance can be seen in below table
-
-| Transformer Model Type and Architecture | Average Validation Accuracy (%) Score |
-|:---------------|----------------:|
-| MBERT Standard Sequence Classification Model |  |
-| MBERT Custom Sequence Classification Model |  |
-| XLM-RoBERTa Standard Sequence Classification Model | 95.87 |
-| XLM-RoBERTa Custom Sequence Classification Model |  |
-
-## Exploratory Data Analysis
-
-<< To Be Documented Soon ... >>
