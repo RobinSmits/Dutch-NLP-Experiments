@@ -19,7 +19,7 @@ Ideas that I'am currently researching/coding/experimenting:
 - Use MBERT and XLM-RoBERTa as feature extractors and perform classification with SVM.
 - Train and evaluate mT5 and ByT5 as classifiers.
 
-The remaining ideas should be completed in the next few weeks (July 2021)
+The remaining ideas should be completed in the period of July-August 2021
 
 Note! If anyone is aware of more multi-lingual models that support Dutch and you would like me to add those...put in a request through an Issue.
 
@@ -51,7 +51,21 @@ The achieved performance can be seen in below table. XLM-RoBERTa scores slightly
 
 ## Exploratory Data Analysis
 
-<< To Be Documented Soon ... >>
+The python script 'eda.py' performs a simple Exploratory Data Analysis of the used dataset when run. The next image shows a distribution plot of the count of sentences per news article separated by partisan lable.
+
+![Distribution plot of sentences count per article](images/xlm-roberta-base_plot_text_sentences_count.png)
+
+The next image shows a distribution plot of the count of individual words per news article separated by partisan lable. While there are some extreme outliers the majority of articles has less than 1000 - 1500 words per article.
+
+![Distribution plot of individual word count per article](images/xlm-roberta-base_plot_text_words_count.png)
+
+The used Multilingual Transformer models have a maximum input size length of 512 tokens. Each news article will be tokenized and any sequence of tokens longer then 512 tokens will be truncated. While this process will lead to some loss of information I will still use it this way to have a generic approach accross all models. 
+
+If we compare this to the pre-transformers way of NLP we would also remove stop words, remove punctuation, perform stemming or lemmatization. So while in a different way we would also lose information. 
+
+The following distribution plot shows the token count (without truncation...) per news article separated by partisan lable. This will give an impression of the amount of information lost when truncation will be performed. The tokenization count is based on the tokenizer as is used for the 'xlm-roberta' model.
+
+![Distribution plot of token count per article](images/xlm-roberta-base_plot_text_token_count.png)
 
 ## References
 

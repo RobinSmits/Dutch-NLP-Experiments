@@ -34,6 +34,9 @@ download_articles_by_publisher(CACHE_DIR)
 # Get DpgNews Dataframe
 dpgnews_df = get_dpgnews_df(CACHE_DIR)
 
+# Set Seaborn Style
+sns.set_theme(style = "whitegrid")
+
 # Get Counts for Title, Text, Sentences and Partisan Labels
 dpgnews_df['title_wordcount'] = dpgnews_df.title.str.split(' ').str.len()
 dpgnews_df['text_wordcount'] = dpgnews_df.text.str.split(' ').str.len()
@@ -49,16 +52,16 @@ print(dpgnews_df.text_sentence_count.value_counts().sort_index())
     
 # Plot Words Count
 g = sns.displot(dpgnews_df, kind = 'kde', rug = True, x = 'text_wordcount', hue = 'partisan')
-g.set_axis_labels("Text - Words Per Article Count", 'Density', labelpad = 10)
+g.set_axis_labels('Words Per Article Count', 'Density', labelpad = 10)
 g.fig.set_size_inches(10, 6)
-plt.savefig(f'{model_type}_plot_text_words_count.png', dpi = 200)
+g.savefig(f'{model_type}_plot_text_words_count.png', dpi = 200)
 plt.close()
 
 # Plot Sentence Count
 g = sns.displot(dpgnews_df, kind = 'kde', rug = True, x = 'text_sentence_count', hue = 'partisan')
-g.set_axis_labels("Text - Sentences Per Article Count", 'Density', labelpad = 10)
+g.set_axis_labels('Sentences Per Article Count', 'Density', labelpad = 10)
 g.fig.set_size_inches(10, 6)
-plt.savefig(f'{model_type}_plot_text_sentences_count.png', dpi = 200)
+g.savefig(f'{model_type}_plot_text_sentences_count.png', dpi = 200)
 plt.close()
 
 # Get Token Count / PLot Token Count
@@ -71,9 +74,9 @@ for index, row in tqdm(dpgnews_df.iterrows(), total = dpgnews_df.shape[0]):
     input_encoded = tokenizer.encode_plus(text, add_special_tokens = True)
     dpgnews_df.loc[index, 'text_token_count'] = len(input_encoded['input_ids']) 
 g = sns.displot(dpgnews_df, kind = 'kde', rug = True, x = 'text_token_count', hue = 'partisan')
-g.set_axis_labels(f'Text {model_type} Tokens Per Article Count', 'Density', labelpad = 10)
+g.set_axis_labels(f'Tokens Per Article Count - Model Type: {model_type}', 'Density', labelpad = 10)
 g.fig.set_size_inches(10, 6)
-plt.savefig(f'{model_type}_plot_text_token_count.png', dpi = 200)
+g.savefig(f'{model_type}_plot_text_token_count.png', dpi = 200)
 plt.close()
 
 # Text Token Counts Smaller/Greater than 512 .. which is max input size for Transformers model
