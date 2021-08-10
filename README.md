@@ -2,7 +2,7 @@
 
 ## Introduction
 
-While the majority of current Transformer models is focused on English (or a small set of languages) a few Transformer models are truly multi-lingual as for example multi-lingual BERT (I'll further call this MBERT ;-) ) or XLM-RoBERTa. Recently some more Transformer models became available that support a large number of languages (mT5 and ByT5).
+While the majority of current Transformer models is focused on English (or a small set of multiple languages) a few Transformer models are truly multi-lingual as for example multi-lingual BERT (I'll further call this MBERT ;-) ) or XLM-RoBERTa. Recently some more Transformer models became available that support a large number of languages (mT5 and ByT5).
 
 As my own native language is Dutch and not English I already had the idea for a while to try out some of these models on a Dutch language dataset. I would like to see what they are capable of doing .. or not. Also being able to make a comparison between them and see what performance they would be capable of.
 
@@ -12,14 +12,12 @@ All code was created based on Tensorflow and the Huggingface Transformers Librar
 
 Ideas completed so far:
 - Basic Exploratory Data Analysis
-- Train and evaluate the performance of MBERT and XLM-RoBERTa as classifiers of partisan news articles.
+- Train and evaluate the performance of MBERT and XLM-RoBERTa as classifiers of Dutch partisan news articles.
+- Pre-training MBERT and XLM-RoBERTa Masked LM model on the DPGNews Dataset. After that again train and evaluate those models as classifiers of Dutch partisan news articles. What is the difference between 'pre-training and finetuning' and just 'finetuning'?
 
 Ideas that I'am currently researching/coding/experimenting:
-- Pre-training MBERT and XLM-RoBERTa Masked LM models. After that again fine-tuning as classifiers. What is the difference with just fine-tuning the models as classifiers?
-- Use MBERT and XLM-RoBERTa as feature extractors and perform classification with SVM.
-- Train and evaluate mT5 and ByT5 as classifiers.
-
-The remaining ideas should be completed in the period of July-August 2021
+- Using the default MBERT and XLM-RoBERTa models (without any pretraining or finetuning...) as feature extractors and perform classification with SVM.
+- Train and evaluate mT5 and ByT5 as 'classifiers'.
 
 Note! If anyone is aware of more multi-lingual models that support Dutch and you would like me to add those...put in a request through an Issue.
 
@@ -30,15 +28,17 @@ It contains various parts but the main part I use is a set of about 104K news ar
 
 The dataset was created by the authors with the aim to contribute to for example create a partisan news detector. In the python code used in the experiments the specific dataset files are downloaded automatically. Checkout the github and paper for more information about the dataset and how it whas constructed. See the References for the information.
 
-## Multi-Lingual BERT and XLM-RoBERTa
+## Fine-tuning Multi-Lingual BERT and XLM-RoBERTa
+
+The first part of my experiments was just fine-tuning a default (with the default model-weights as available at Huggingface) MBERT and XLM-RoBERTa model to act as a classifier for the partisan news articles.
 
 The python file 'train_mbert_xlmroberta.py' contains all the code to download and process the data. The training is performed based on 3 different rounds with each round containing a full 5 fold stratified Cross Validation training run. The average validation score is determined by taking the mean of the validation accuracy across all 15 trained models.
 
 Training was performed on Google Colab Pro TPUv2 hardware. With a batch_size of 64, learning rate of 0.00002, 3 epochs and the maximum token input length of 512 the training process for all 3 rounds with 5 fold CV's could be completed within about 6 to 7 hours.
 
 For both MBERT and XLM-RoBERTa I performed this process on 2 different model setup's:
-- For each model we used the default Huggingface Transformers SequenceClassification Models
-- For each model we used the the BaseModel (TFBertModel / TFRobertaModel) and added a custom classification head.
+- For each model I used the default Huggingface Transformers SequenceClassification Models
+- For each model I used the the BaseModel (TFBertModel / TFRobertaModel) and added a custom classification head.
 
 The achieved performance can be seen in below table. XLM-RoBERTa scores slightly higher than MBERT...but with scores around 95-96% they are both excellent classifiers.
 
@@ -48,6 +48,27 @@ The achieved performance can be seen in below table. XLM-RoBERTa scores slightly
 | MBERT Custom Sequence Classification Model | 95.20 |
 | XLM-RoBERTa Standard Sequence Classification Model | 95.87 |
 | XLM-RoBERTa Custom Sequence Classification Model | 96.20  |
+
+## Pre-training and Fine-tuning Multi-Lingual BERT and XLM-RoBERTa
+
+The second part of my experiments was first pretraining the models on the DPGNews Dataset. With pre-training with Masked Language Modelling the models are able to train on specifically the text data that is provided to them. The general idea about pre-training is that the models can be learned more domain specific. When fine-tuned next on a task such as classification they should be able to achieve a slightly higher accuracy.
+
+The pre-training was performed with the Python script file 'mlm_pretrain_mbert_xlmroberta.py'. The parameters as set in the script file were used to perform the pre-training. Changing various parameters might lead to further improving performance.
+
+After the pre-training was finished the exact same process for the fine-tuning was used as described above.
+
+For both MBERT and XLM-RoBERTa I performed this process on 2 different model setup's:
+- For each model I used the default Huggingface Transformers SequenceClassification Models
+- For each model I used the the BaseModel (TFBertModel / TFRobertaModel) and added a custom classification head.
+
+Both XLM-RoBERTa and MBERT score slightly higher when first pre-trained and than fine-tuned compared to only being fine-tuned. The accuracy improvement is about 0.1% to little over 0.2% dependent on the specific model and architecture used.
+
+| Transformer Model Type and Architecture | Average Validation Accuracy (%) Score |
+|:---------------|----------------:|
+| MBERT Standard Sequence Classification Model | 95.54 |
+| MBERT Custom Sequence Classification Model | 95.46 |
+| XLM-RoBERTa Standard Sequence Classification Model | 96.09 |
+| XLM-RoBERTa Custom Sequence Classification Model | 96.27  |
 
 ## Exploratory Data Analysis
 

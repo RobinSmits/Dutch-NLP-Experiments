@@ -12,10 +12,23 @@ def ModelCheckpoint(model_name: str)->tf.keras.callbacks.ModelCheckpoint:
 
 ### XLM-RoBERTa ######################################################################################################
 
-def create_xlm_roberta_model_v1(strategy: tf.distribute.Strategy, config: AutoConfig, lr: float)->tf.keras.Model:
+def create_xlm_roberta_model_v1(use_default_weights: bool, 
+                                custom_pretrained_model_checkpoint: str, 
+                                strategy: tf.distribute.Strategy, 
+                                config: AutoConfig, 
+                                lr: float)->tf.keras.Model:
+    
+    # Set Model init specs
+    if use_default_weights:
+        model_type = 'jplu/tf-xlm-roberta-base'
+        from_pt = False
+    else:
+        model_type = custom_pretrained_model_checkpoint
+        from_pt = True
+        
     # Create 'Standard' Classification Model
     with strategy.scope():   
-        model = TFXLMRobertaForSequenceClassification.from_pretrained('jplu/tf-xlm-roberta-base', config = config)
+        model = TFXLMRobertaForSequenceClassification.from_pretrained(model_type, config = config, from_pt = from_pt)
         
         optimizer = tf.keras.optimizers.Adam(learning_rate = lr)
         loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits = True)
@@ -25,7 +38,21 @@ def create_xlm_roberta_model_v1(strategy: tf.distribute.Strategy, config: AutoCo
         
         return model
 
-def create_xlm_roberta_model_v2(strategy: tf.distribute.Strategy, config: AutoConfig, max_len: int, lr: float)->tf.keras.Model:
+def create_xlm_roberta_model_v2(use_default_weights: bool, 
+                                custom_pretrained_model_checkpoint: str, 
+                                strategy: tf.distribute.Strategy, 
+                                config: AutoConfig, 
+                                max_len: int, 
+                                lr: float)->tf.keras.Model:
+
+    # Set Model init specs
+    if use_default_weights:
+        model_type = 'jplu/tf-xlm-roberta-base'
+        from_pt = False
+    else:
+        model_type = custom_pretrained_model_checkpoint
+        from_pt = True
+    
     # Create Custom Model
     with strategy.scope():   
         input_ids = tf.keras.layers.Input(shape = (max_len,), dtype = tf.int32, name = 'input_ids')
@@ -35,7 +62,7 @@ def create_xlm_roberta_model_v2(strategy: tf.distribute.Strategy, config: AutoCo
         kernel_initializer = tf.keras.initializers.RandomNormal(mean = 0.0, stddev = 0.05, seed = None)
         bias_initializer = tf.keras.initializers.RandomNormal(mean = 0.0, stddev = 0.05, seed = None)
 
-        transformers_model = TFRobertaModel.from_pretrained('jplu/tf-xlm-roberta-base', config = config)
+        transformers_model = TFRobertaModel.from_pretrained(model_type, config = config, from_pt = from_pt)
         
         last_hidden_states = transformers_model({'input_ids': input_ids, 'attention_mask': input_masks})
         x = last_hidden_states[0][:, 0, :]
@@ -54,10 +81,23 @@ def create_xlm_roberta_model_v2(strategy: tf.distribute.Strategy, config: AutoCo
 
 ### Multi-Lingual BERT ######################################################################################################
 
-def create_mbert_model_v1(model_type: str, strategy: tf.distribute.Strategy, config: AutoConfig, lr: float)->tf.keras.Model:
+def create_mbert_model_v1(use_default_weights: bool, 
+                          custom_pretrained_model_checkpoint: str,
+                          strategy: tf.distribute.Strategy, 
+                          config: AutoConfig, 
+                          lr: float)->tf.keras.Model:
+
+    # Set Model init specs
+    if use_default_weights:
+        model_type = 'bert-base-multilingual-cased'
+        from_pt = False
+    else:
+        model_type = custom_pretrained_model_checkpoint
+        from_pt = True
+    
     # Create 'Standard' Classification Model
     with strategy.scope():   
-        model = TFBertForSequenceClassification.from_pretrained(model_type, config = config)
+        model = TFBertForSequenceClassification.from_pretrained(model_type, config = config, from_pt = from_pt)
         
         optimizer = tf.keras.optimizers.Adam(learning_rate = lr)
         loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits = True)
@@ -67,7 +107,21 @@ def create_mbert_model_v1(model_type: str, strategy: tf.distribute.Strategy, con
         
         return model
 
-def create_mbert_model_v2(model_type: str, strategy: tf.distribute.Strategy, config: AutoConfig, max_len: int, lr: float)->tf.keras.Model:
+def create_mbert_model_v2(use_default_weights: bool, 
+                          custom_pretrained_model_checkpoint: str, 
+                          strategy: tf.distribute.Strategy, 
+                          config: AutoConfig, 
+                          max_len: int, 
+                          lr: float)->tf.keras.Model:
+
+    # Set Model init specs
+    if use_default_weights:
+        model_type = 'bert-base-multilingual-cased'
+        from_pt = False
+    else:
+        model_type = custom_pretrained_model_checkpoint
+        from_pt = True
+    
     # Create Custom Model
     with strategy.scope():   
         input_ids = tf.keras.layers.Input(shape = (max_len,), dtype = tf.int32, name = 'input_ids')
@@ -77,7 +131,7 @@ def create_mbert_model_v2(model_type: str, strategy: tf.distribute.Strategy, con
         kernel_initializer = tf.keras.initializers.RandomNormal(mean = 0.0, stddev = 0.05, seed = None)
         bias_initializer = tf.keras.initializers.RandomNormal(mean = 0.0, stddev = 0.05, seed = None)
 
-        transformers_model = TFBertModel.from_pretrained(model_type, config = config)
+        transformers_model = TFBertModel.from_pretrained(model_type, config = config, from_pt = from_pt)
         
         last_hidden_states = transformers_model({'input_ids': input_ids, 'attention_mask': input_masks})
         x = last_hidden_states[0][:, 0, :]

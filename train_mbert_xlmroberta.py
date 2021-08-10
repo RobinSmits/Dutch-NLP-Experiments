@@ -20,42 +20,55 @@ try:
     tf.tpu.experimental.initialize_tpu_system(tpu)
     strategy = tf.distribute.experimental.TPUStrategy(tpu)
 except ValueError:
-    #tf.config.set_visible_devices([], 'GPU') # Uncomment to force tensorflow to use CPU instead of GPU
+    # tf.config.set_visible_devices([], 'GPU') # Uncomment to force tensorflow to use CPU instead of GPU
     strategy = tf.distribute.get_strategy()
 
 # Constants
 MAX_LEN = 512
 FOLD_SPLITS = 5
 EPOCHS = 3
+LR = 0.00002
 VERBOSE = 1
 WORK_DIR = './'
 CACHE_DIR = './'
 SEEDS = [*range(1000, 1003, 1)]
 
+################## MODEL SETTINGS ###########################################################################
+# Set Model Type for Base Model to use
+    # 1. 'bert-base-multilingual-cased'    for Multilingual BERT model
+    # 2. 'xlm-roberta-base'                for Multi-lingual XLM-RoBERTa model
+model_type = 'bert-base-multilingual-cased'
+# Set Model Architecture (Standard or Custom Sequence Classifier) 
+    # True = Standard Sequence Classifier
+    # False = Custom Sequence Classifier
+use_standard_model = True
+# Set Model Weights Type (Use Standard or Custom Pretrained on DPGNews Dataset) 
+    # True = Default Model Weights as available from Huggingface Transformers
+    # False = Custom Pretrained MLM model weights (pretrained with script: mlm_pretrain_mbert_xlmroberta.py)
+use_default_weights = True
+# Set Custom Pretrained Model Checkpoint Path (Used if 'use_default_model_weights = True)
+custom_pretrained_model_checkpoint = './mlm_pretrain/bert-base-multilingual-cased/checkpoint-11000'
+
+# Model Summary
+print(f'Model Type: {model_type}')
+print(f'Use Standard Model: {use_standard_model}')
+print(f'Use Default Model Weights: {use_default_weights}')
+print(f'Custom Pretrained Model Checkpoint: {custom_pretrained_model_checkpoint}')
+
 # Set Autotune
 AUTO = tf.data.experimental.AUTOTUNE
 
 # Set Batch Size
-BASE_BATCH_SIZE = 3         # Modify to match your GPU card.
+BASE_BATCH_SIZE = 4         # Modify to match your GPU card.
 if tpu is not None:         
     BASE_BATCH_SIZE = 8     # TPU v2 or up...
 BATCH_SIZE = BASE_BATCH_SIZE * strategy.num_replicas_in_sync
-
-# Set Learning Rate
-LR = 0.00002
 
 # Summary
 print(f'Seeds: {SEEDS}')
 print(f'Replica Count: {strategy.num_replicas_in_sync}')
 print(f'Batch Size: {BATCH_SIZE}')
 print(f'Learning Rate: {LR}')
-
-# Set Model Type
-# Set to the following:
-# 1. 'bert-base-multilingual-cased'    for Multilingual BERT model
-# 2. 'xlm-roberta-base'                for Multi-lingual XLM-RoBERTa model
-model_type = 'bert-base-multilingual-cased'
-print(f'Model Type: {model_type}')
 
 # Set Config
 config = AutoConfig.from_pretrained(model_type, num_labels = 2) # Binary classification so set num_labels = 2
@@ -120,10 +133,14 @@ for seed in SEEDS:
         validation_dataset = create_validation_dataset(val_input_ids, val_input_masks, val_labels, BATCH_SIZE)
 
         # Create Model
-        #if model_type == 'xlm-roberta-base': model = create_xlm_roberta_model_v1(strategy, config, LR)
-        if model_type == 'xlm-roberta-base': model = create_xlm_roberta_model_v2(strategy, config, MAX_LEN, LR)
-        #if model_type == 'bert-base-multilingual-cased': model = create_mbert_model_v1(model_type, strategy, config, LR)
-        if model_type == 'bert-base-multilingual-cased': model = create_mbert_model_v2(model_type, strategy, config, MAX_LEN, LR)
+        if model_type == 'xlm-roberta-base' and use_standard_model == True:
+            model = create_xlm_roberta_model_v1(use_default_weights, custom_pretrained_model_checkpoint, strategy, config, LR)
+        if model_type == 'xlm-roberta-base' and use_standard_model == False:
+            model = create_xlm_roberta_model_v2(use_default_weights, custom_pretrained_model_checkpoint, strategy, config, MAX_LEN, LR)
+        if model_type == 'bert-base-multilingual-cased' and use_standard_model == True:
+            model = create_mbert_model_v1(use_default_weights, custom_pretrained_model_checkpoint, strategy, config, LR)
+        if model_type == 'bert-base-multilingual-cased' and use_standard_model == False:
+            model = create_mbert_model_v2(use_default_weights, custom_pretrained_model_checkpoint, strategy, config, MAX_LEN, LR)
 
         # Model Summary
         if fold == 0: # Only need to show Model Summary once...
