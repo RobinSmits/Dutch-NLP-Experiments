@@ -79,6 +79,25 @@ def create_xlm_roberta_model_v2(use_default_weights: bool,
         
         return model
 
+def create_xlm_roberta_model_v3(model_type: str, 
+                                strategy: tf.distribute.Strategy, 
+                                config: AutoConfig, 
+                                max_len: int)->tf.keras.Model:
+    
+    # Create Custom Model
+    with strategy.scope():   
+        input_ids = tf.keras.layers.Input(shape = (max_len,), dtype = tf.int32, name = 'input_ids')
+        input_masks = tf.keras.layers.Input(shape = (max_len,), dtype = tf.int32, name = 'attention_mask')
+        
+        transformers_model = TFRobertaModel.from_pretrained('jplu/tf-xlm-roberta-base', config = config)
+        
+        output_dict = transformers_model({'input_ids': input_ids, 'attention_mask': input_masks})
+        last_hidden_state = output_dict.last_hidden_state
+        outputs = last_hidden_state[:, 0, :]
+        model = tf.keras.Model(inputs = [input_ids, input_masks], outputs = outputs) 
+        
+    return model
+
 ### Multi-Lingual BERT ######################################################################################################
 
 def create_mbert_model_v1(use_default_weights: bool, 
@@ -145,5 +164,24 @@ def create_mbert_model_v2(use_default_weights: bool,
 
         # Compile
         model.compile(optimizer = optimizer, loss = loss, metrics = [metric])        
+        
+        return model
+
+def create_mbert_model_v3(model_type: str, 
+                          strategy: tf.distribute.Strategy, 
+                          config: AutoConfig, 
+                          max_len: int)->tf.keras.Model:
+
+    # Create Custom Model
+    with strategy.scope():   
+        input_ids = tf.keras.layers.Input(shape = (max_len,), dtype = tf.int32, name = 'input_ids')
+        input_masks = tf.keras.layers.Input(shape = (max_len,), dtype = tf.int32, name = 'attention_mask')
+        
+        transformers_model = TFBertModel.from_pretrained(model_type, config = config)
+        
+        output_dict = transformers_model({'input_ids': input_ids, 'attention_mask': input_masks})
+        last_hidden_state = output_dict.last_hidden_state
+        outputs = last_hidden_state[:, 0, :]
+        model = tf.keras.Model(inputs = [input_ids, input_masks], outputs = outputs) 
         
         return model

@@ -14,9 +14,9 @@ Ideas completed so far:
 - Basic Exploratory Data Analysis
 - Train and evaluate the performance of MBERT and XLM-RoBERTa as classifiers of Dutch partisan news articles.
 - Pre-training MBERT and XLM-RoBERTa Masked LM model on the DPGNews Dataset. After that again train and evaluate those models as classifiers of Dutch partisan news articles. What is the difference between 'pre-training and finetuning' and just 'finetuning'?
+- Using the default MBERT and XLM-RoBERTa models (without any pretraining or finetuning...) as feature extractors and perform classification with SVM.
 
 Ideas that I'am currently researching/coding/experimenting:
-- Using the default MBERT and XLM-RoBERTa models (without any pretraining or finetuning...) as feature extractors and perform classification with SVM.
 - Train and evaluate mT5 and ByT5 as 'classifiers'.
 
 Note! If anyone is aware of more multi-lingual models that support Dutch and you would like me to add those...put in a request through an Issue.
@@ -69,6 +69,19 @@ Both XLM-RoBERTa and MBERT score slightly higher when first pre-trained and than
 | MBERT Custom Sequence Classification Model | 95.46 |
 | XLM-RoBERTa Standard Sequence Classification Model | 96.09 |
 | XLM-RoBERTa Custom Sequence Classification Model | 96.27  |
+
+## Multi-Lingual BERT and XLM-RoBERTa Feature Extractors and Support Vector Machine as classifier
+
+In the third part of my experiments I use MBERT and XLM-RoBERTa as feature extractors. The models are not finetuned on the DPGNews dataset. They are just used - with the default model weights - to generate feature vectors. The models are modified so that the weights of the last hidden state layer can be used as those feature vectors.
+
+The feature vectors are then used to fit a LinearSVC (Support Vector Machine) model. For this we again perform 3 rounds of 5 Fold Cross Validation training. The average accuracy of classification is based on those 3 rounds with 5 Fold CV.
+
+The python script to run for the feature extraction + SVM classification is 'svm_mbert_xlmroberta.py'. The table below shows the average accuracy achieved with the settings as set in the script. Though the accuracy achieved is lower than when finetuning the Transformers models it is still a very nice score considering we extracted feature vectors from 'default' models and used a rather 'classical' (but still very usable ..) SVM classifier. Also the feature extraction + SVM classification ran in approximately 1 hour compared to at least 6 to 7 hours for fine-tuning the Transformer models.
+
+| Transformer Model Type and Architecture | Average Validation Accuracy (%) Score |
+|:---------------|----------------:|
+| MBERT Feature Extraction Model | 86.27 |
+| XLM-RoBERTa Feature Extraction Model | 88.17 |
 
 ## Exploratory Data Analysis
 

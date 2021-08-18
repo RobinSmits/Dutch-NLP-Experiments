@@ -105,3 +105,10 @@ def create_validation_dataset(input_ids: np.ndarray, input_masks: np.ndarray, la
     validation_dataset = validation_dataset.prefetch(1024)
 
     return validation_dataset
+
+def create_svc_dataset(input_ids: np.ndarray, input_masks: np.ndarray, labels: np.ndarray, batch_size: int)->tf.data.Dataset:
+    dataset = create_dataset(input_ids, input_masks, labels)
+    dataset = dataset.batch(batch_size)
+    dataset = dataset.prefetch(1024)
+
+    return dataset
