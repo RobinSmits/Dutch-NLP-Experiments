@@ -10,13 +10,11 @@ Recently I came accross a Dutch news articles dataset which contained for each a
 
 All code was created based on Tensorflow and the Huggingface Transformers Library. All models were trained on Google Colab Pro TPUv2 runtimes.
 
-Ideas completed so far:
+This repository contains code for the following experiments:
 - Basic Exploratory Data Analysis
 - Train and evaluate the performance of MBERT and XLM-RoBERTa as classifiers of Dutch partisan news articles.
 - Pre-training MBERT and XLM-RoBERTa Masked LM model on the DPGNews Dataset. After that again train and evaluate those models as classifiers of Dutch partisan news articles. What is the difference between 'pre-training and finetuning' and just 'finetuning'?
 - Using the default MBERT and XLM-RoBERTa models (without any pretraining or finetuning...) as feature extractors and perform classification with SVM.
-
-Ideas that I'am currently researching/coding/experimenting:
 - Train and evaluate mT5 and ByT5 as 'classifiers'.
 
 Note! If anyone is aware of more multi-lingual models that support Dutch and you would like me to add those...put in a request through an Issue.
