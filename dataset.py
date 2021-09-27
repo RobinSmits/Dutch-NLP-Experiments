@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from tqdm import tqdm
-from transformers import *
+from transformers import AutoTokenizer
 from typing import Tuple
 from urllib.request import urlopen
 
