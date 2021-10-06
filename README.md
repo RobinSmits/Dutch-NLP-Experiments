@@ -104,8 +104,8 @@ The achieved performance can be seen in below table. mT5 scores higher than ByT5
 |:---------------|----------------:|
 | mT5 - Small | 86.85 |
 | mT5 - Base | 91.60 |
-| ByT5 - Small | 75.13 |
-| ByT5 - Base | 85.48  |
+| ByT5 - Small | 74.93 |
+| ByT5 - Base | 85.18  |
 
 ## Exploratory Data Analysis
 
