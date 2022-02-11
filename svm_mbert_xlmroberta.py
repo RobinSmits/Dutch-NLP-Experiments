@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np 
 import tensorflow as tf
 from sklearn.model_selection import train_test_split, StratifiedKFold
+from sklearn.metrics import classification_report
 from sklearn.svm import LinearSVC
 from tqdm import tqdm
 from transformers import *
@@ -13,15 +14,14 @@ from dataset import *
 from models import *
 from utils import *
 
-# Configure Strategy. Assume TPU...if not set default for GPU/CPU
+# Configure Strategy. Assume TPU...if not set default for GPU
 tpu = None
 try:
     tpu = tf.distribute.cluster_resolver.TPUClusterResolver()
     tf.config.experimental_connect_to_cluster(tpu)
     tf.tpu.experimental.initialize_tpu_system(tpu)
     strategy = tf.distribute.experimental.TPUStrategy(tpu)
-except ValueError:
-    tf.config.set_visible_devices([], 'GPU') # Uncomment to force tensorflow to use CPU instead of GPU
+except:
     strategy = tf.distribute.get_strategy()
 
 # Constants
@@ -40,9 +40,6 @@ model_type = 'xlm-roberta-base'
 
 # Model Summary
 print(f'Model Type: {model_type}')
-
-# Set Autotune
-AUTO = tf.data.experimental.AUTOTUNE
 
 # Set Batch Size
 BASE_BATCH_SIZE = 8         # Modify to match your GPU card.
@@ -70,14 +67,6 @@ download_articles_by_publisher(CACHE_DIR)
 # Get DpgNews Dataframe
 dpgnews_df = get_dpgnews_df(CACHE_DIR)
 
-# Perform tokenization and labelling
-input_ids, input_masks, labels = tokenize_dpgnews_df(dpgnews_df, MAX_LEN, tokenizer)
-
-# Summary
-print(f'\nInput Ids Shape: {input_ids.shape}')
-print(f'Input Masks Shape: {input_masks.shape}')
-print(f'Labels Shape: {labels.shape}')
-
 # Use a Transformers model with the default weights to extract feature vectors for Support Vector Classifier
 # I modify the model to use the last hidden states layer to generate the feature vector.
 # Different hidden states layers ( or combinations of hidden states layers) can be used to generate feature vectors.
@@ -86,11 +75,14 @@ if model_type == 'xlm-roberta-base': feature_extraction_model = create_xlm_rober
 feature_extraction_model.summary()
 
 # Create SVC Dataset
-svc_dataset = create_svc_dataset(input_ids, input_masks, labels, BATCH_SIZE)
+svc_dataset = create_dataset(dpgnews_df, MAX_LEN, tokenizer, BATCH_SIZE, shuffle = False)
 
 # Get Feature Vectors for SVC - a feature vector for each input record...
 print('\nGenerating Feature Vectors...')
 svc_features_set = feature_extraction_model.predict(svc_dataset, verbose = 1)
+
+# Get Labels from SVC dataset
+labels = np.hstack([label.numpy() for example, label in svc_dataset])
 
 # Accuracy PlaceHoler
 val_acc_list = []
@@ -138,12 +130,23 @@ for seed in SEEDS:
                               max_iter = 10000)
         
         # Fit SVM Model
+        print('\n================================ Fitting SVM Model\n')
         svm_model.fit(train_features, train_labels)
         
         # Accuracy....
         eval_score = svm_model.score(val_features, val_labels)
         val_acc_list.append(eval_score)
         print(f'\n================================ Detection Accuracy: {eval_score * 100}%\n')
+
+        # Classification Report
+        preds = svm_model.predict(val_features   )
+        print(f'\n================================ Classification Report')
+        print(classification_report(val_labels, preds))
+            
+        # Cleanup
+        del train_features, val_features, train_labels, val_labels, svm_model
+        gc.collect()
         
 # Summary
 print(f'Final Mean Accuracy for Multiple Seeds / Fold CV Training: {np.mean(val_acc_list) * 100}%\n')
+ 

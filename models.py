@@ -229,18 +229,18 @@ class T5_Accuracy(tf.keras.metrics.Metric):
             var.assign(tf.zeros(shape = var.shape))
 
 class KerasTFMT5ForConditionalGeneration(TFMT5ForConditionalGeneration):
-    def __init__(self, *args, log_dir=None, cache_dir= None, **kwargs):
+    def __init__(self, *args, log_dir = None, cache_dir = None, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.loss_tracker= tf.keras.metrics.Mean(name = 'loss') 
     
     @tf.function
     def train_step(self, data):
-        x = data[0]
+        x = data
         y = x['labels']
         y = tf.reshape(y, [-1, 1])
         with tf.GradientTape() as tape:
-            outputs = self(x, training=True)
+            outputs = self(x, training = True)
             loss = outputs[0]
             logits = outputs[1]
             loss = tf.reduce_mean(loss)
@@ -254,8 +254,8 @@ class KerasTFMT5ForConditionalGeneration(TFMT5ForConditionalGeneration):
         return metrics
 
     def test_step(self, data):
-        x = data[0]
-        y = x["labels"]
+        x = data
+        y = x['labels']
         y = tf.reshape(y, [-1, 1])
         output = self(x, training = False)
         loss = output[0]
@@ -268,18 +268,18 @@ class KerasTFMT5ForConditionalGeneration(TFMT5ForConditionalGeneration):
         return {m.name: m.result() for m in self.metrics}
 
 class KerasTFByT5ForConditionalGeneration(TFT5ForConditionalGeneration):
-    def __init__(self, *args, log_dir=None, cache_dir= None, **kwargs):
+    def __init__(self, *args, log_dir = None, cache_dir = None, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.loss_tracker= tf.keras.metrics.Mean(name = 'loss') 
     
     @tf.function
     def train_step(self, data):
-        x = data[0]
+        x = data
         y = x['labels']
         y = tf.reshape(y, [-1, 1])
         with tf.GradientTape() as tape:
-            outputs = self(x, training=True)
+            outputs = self(x, training = True)
             loss = outputs[0]
             logits = outputs[1]
             loss = tf.reduce_mean(loss)
@@ -293,8 +293,8 @@ class KerasTFByT5ForConditionalGeneration(TFT5ForConditionalGeneration):
         return metrics
 
     def test_step(self, data):
-        x = data[0]
-        y = x["labels"]
+        x = data
+        y = x['labels']
         y = tf.reshape(y, [-1, 1])
         output = self(x, training = False)
         loss = output[0]
@@ -309,7 +309,7 @@ class KerasTFByT5ForConditionalGeneration(TFT5ForConditionalGeneration):
 def create_mt5_model(model_type: str, strategy: tf.distribute.Strategy, config: AutoConfig, lr: float, max_label_len: int, total_steps: int)->tf.keras.Model:
     # Create Model
     with strategy.scope():
-        radam = tfa.optimizers.RectifiedAdam(lr = lr, total_steps = total_steps, warmup_proportion = 0.10, min_lr = lr/3.)
+        radam = tfa.optimizers.RectifiedAdam(learning_rate = lr, total_steps = total_steps, warmup_proportion = 0.10, min_lr = lr/3.)
         ranger = tfa.optimizers.Lookahead(radam, sync_period = 6, slow_step_size = 0.5)
 
         model = KerasTFMT5ForConditionalGeneration.from_pretrained(model_type, config = config)
@@ -320,7 +320,7 @@ def create_mt5_model(model_type: str, strategy: tf.distribute.Strategy, config: 
 def create_byt5_model(model_type: str, strategy: tf.distribute.Strategy, config: AutoConfig, lr: float, max_label_len: int, total_steps: int)->tf.keras.Model:
     # Create Model
     with strategy.scope():
-        radam = tfa.optimizers.RectifiedAdam(lr = lr, total_steps = total_steps, warmup_proportion = 0.10, min_lr = lr/3.)
+        radam = tfa.optimizers.RectifiedAdam(learning_rate = lr, total_steps = total_steps, warmup_proportion = 0.10, min_lr = lr/3.)
         ranger = tfa.optimizers.Lookahead(radam, sync_period = 6, slow_step_size = 0.5)
 
         model = KerasTFByT5ForConditionalGeneration.from_pretrained(model_type, config = config)

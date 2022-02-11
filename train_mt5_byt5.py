@@ -12,7 +12,7 @@ from dataset import *
 from models import *
 from utils import *
 
-# Configure Strategy. Assume TPU...if not set default for GPU/CPU
+# Configure Strategy. Assume TPU...if not set default for GPU
 tpu = None
 try:
     tpu = tf.distribute.cluster_resolver.TPUClusterResolver()
@@ -20,7 +20,6 @@ try:
     tf.tpu.experimental.initialize_tpu_system(tpu)
     strategy = tf.distribute.experimental.TPUStrategy(tpu)
 except ValueError:
-    #tf.config.set_visible_devices([], 'GPU') # Uncomment to force tensorflow to use CPU instead of GPU
     strategy = tf.distribute.get_strategy()
 
 # Uncomment .. For TF Debugging
@@ -30,23 +29,18 @@ except ValueError:
 MAX_LEN = 512 # Use the maximum input length for MT5 or ByT5
 FOLD_SPLITS = 5
 EPOCHS = 10
+LR = 0.00002
 VERBOSE = 1
 CACHE_DIR = './'
 WORK_DIR = './'
 SEEDS = [*range(1000, 1003, 1)]
 FOLD_EARLY_STOP = 5
 
-# Set Autotune
-AUTO = tf.data.experimental.AUTOTUNE
-
 # Set Batch Size
-BASE_BATCH_SIZE = 32        # Modify to match your GPU card.
+BASE_BATCH_SIZE = 4        # Modify to match your GPU card.
 if tpu is not None:         
     BASE_BATCH_SIZE = 4     # TPU v3 ... (I've only had limited access to these through my Kaggle account..that gives you 30 hours for free each week..)
 BATCH_SIZE = BASE_BATCH_SIZE * strategy.num_replicas_in_sync
-
-# Set Learning Rate
-LR = 0.00002
 
 # Summary
 print(f'Seeds: {SEEDS}')
@@ -80,16 +74,6 @@ download_articles_by_publisher(CACHE_DIR)
 # Get DpgNews Dataframe
 dpgnews_df = get_dpgnews_df(CACHE_DIR)
 
-# Perform tokenization and labelling
-input_ids, input_masks, output_ids, output_masks, labels = tokenize_t5_dpgnews_df(dpgnews_df, MAX_LEN, MAX_LABEL_LEN, tokenizer)
-
-# Summary
-print(f'\nInput Ids Shape: {input_ids.shape}')
-print(f'Input Masks Shape: {input_masks.shape}')
-print(f'Output Ids Shape: {output_ids.shape}')
-print(f'Output Masks Shape: {output_masks.shape}')
-print(f'Labels Shape: {labels.shape}')
-
 # Label Example - True
 print(f'\nLabelling Example: True ==> politiek')
 partisan_label = 'politiek'
@@ -118,10 +102,10 @@ for seed in SEEDS:
     folds = StratifiedKFold(n_splits = FOLD_SPLITS, shuffle = True, random_state = seed)
 
     # Loop through Folds
-    for fold, (train_index, val_index) in enumerate(folds.split(input_ids, labels)):
+    for fold, (train_index, val_index) in enumerate(folds.split(dpgnews_df, dpgnews_df.partisan.values)):
         # START        
         print(f'\n================================ FOLD {fold} === SEED {seed}')
-
+        
         # Fold Early Stopping...To limit time required for training
         if fold > FOLD_EARLY_STOP:
             break
@@ -131,29 +115,20 @@ for seed in SEEDS:
         if tpu is not None:
             tf.tpu.experimental.initialize_tpu_system(tpu)
         gc.collect()
-        
-        # 'Cut Indexes' to contain only full size batches...
-        # I had a lot of issues with both Loss and Accuracy occasionally going to NaN on TPU but not on GPU.
-        # After finding this on github: https://github.com/tensorflow/tensorflow/issues/41635 ... 
-        # I implemented some simple lines to make sure only full size batches are used during training and validation...that solved the NaN's
-        train_count = len(train_index) // BATCH_SIZE
-        val_count = len(val_index) // BATCH_SIZE
-        train_index = train_index[:(train_count * BATCH_SIZE)]
-        val_index = val_index[:(val_count * BATCH_SIZE)]
+ 
+        # Show Indexes
         print(train_index[:10])
         print(val_index[:10])
+        train_df = dpgnews_df.iloc[train_index]
+        val_df = dpgnews_df.iloc[val_index]
 
-        # Create Train and Validation Array sets
-        train_input_ids, train_input_masks, train_output_ids, train_output_masks, train_labels = input_ids[train_index], input_masks[train_index], output_ids[train_index], output_masks[train_index], labels[train_index]
-        val_input_ids, val_input_masks, val_output_ids, val_output_masks, val_labels = input_ids[val_index], input_masks[val_index], output_ids[val_index], output_masks[val_index], labels[val_index]
+        # Create Train and Validation Datasets
+        train_dataset = create_t5_dataset(train_df, MAX_LEN, MAX_LABEL_LEN, tokenizer, BATCH_SIZE, shuffle = True)
+        validation_dataset = create_t5_dataset(val_df, MAX_LEN, MAX_LABEL_LEN, tokenizer, BATCH_SIZE, shuffle = False)
 
-        # Show Sizes
-        print(f'Train Shape: {train_input_ids.shape}')
-        print(f'Validation Shape: {val_input_ids.shape}')
-        
         # Steps
-        train_steps = train_input_ids.shape[0] // BATCH_SIZE
-        val_steps = val_input_ids.shape[0] // BATCH_SIZE
+        train_steps = train_df.shape[0] // BATCH_SIZE
+        val_steps = val_df.shape[0] // BATCH_SIZE
         total_steps = train_steps * EPOCHS
         print(f'Train Steps: {train_steps}')
         print(f'Val Steps: {val_steps}')
@@ -169,21 +144,15 @@ for seed in SEEDS:
         if fold == 0: # Only need to show Model Summary once...
             model.summary()
 
-        # Set Input
-        train_input_data = {'input_ids': train_input_ids, 'labels': train_output_ids, 'attention_mask': train_input_masks, 'decoder_attention_mask': train_output_masks}
-        validation_input_data = {'input_ids': val_input_ids, 'labels': val_output_ids, 'attention_mask': val_input_masks, 'decoder_attention_mask': val_output_masks}
-               
         # Fit Model
-        history = model.fit(train_input_data,
-                            batch_size = BATCH_SIZE,
-                            validation_data = validation_input_data,
+        history = model.fit(train_dataset,
+                            steps_per_epoch = train_steps,
+                            validation_data = validation_dataset,
+                            validation_steps = val_steps,
                             epochs = EPOCHS, 
-                            shuffle = True,
                             verbose = VERBOSE,
-                            callbacks = [ModelCheckpoint(f'{WORK_DIR}model_fold{fold}.h5')],
-                            use_multiprocessing = False,
-                            workers = 4)
-        
+                            callbacks = [ModelCheckpoint(f'{WORK_DIR}model_fold{fold}.h5')])
+                    
         # Validation Information
         best_val_accuracy = max(history.history['val_accuracy'])
         val_acc_list.append(best_val_accuracy)

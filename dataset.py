@@ -60,41 +60,50 @@ def get_dpgnews_df(cache_dir: str)->pd.DataFrame:
 
     return dpgnews_df
 
-def tokenize_dpgnews_df(df: pd.DataFrame, max_len: int, tokenizer: AutoTokenizer)->Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def create_dataset(df: pd.DataFrame, max_len: int, tokenizer: AutoTokenizer, batch_size: int, shuffle = False)->tf.data.Dataset:
     total_samples = df.shape[0]
 
     # Placeholders input
-    input_ids = np.zeros((total_samples, max_len), dtype = 'int32')
-    input_masks = np.zeros((total_samples, max_len), dtype = 'int32')
-    labels = np.zeros((total_samples, ), dtype = 'int32')
+    input_ids, input_masks = [], []
+    
+    # Placeholder output
+    labels = []
 
+    # Tokenize
     for index, row in tqdm(zip(range(0, total_samples), df.iterrows()), total = total_samples):
         
         # Get title and description as strings
         text = row[1]['text']
         partisan = row[1]['partisan']
 
-        # Process Description - Set Label for real as 0
+        # Encode
         input_encoded = tokenizer.encode_plus(text, add_special_tokens = True, max_length = max_len, truncation = True, padding = 'max_length')
-        input_ids[index,:] = input_encoded['input_ids']
-        input_masks[index,:] = input_encoded['attention_mask']
-        labels[index] = 1 if partisan == 'true' else 0
+        input_ids.append(input_encoded['input_ids'])
+        input_masks.append(input_encoded['attention_mask'])
+        labels.append(1 if partisan == 'true' else 0)
 
-    # Return Arrays
-    return (input_ids, input_masks, labels)
+    # Prepare and Create TF Dataset.
+    all_input_ids = tf.constant(input_ids)
+    all_input_masks = tf.constant(input_masks)
+    all_labels = tf.constant(labels)
+    dataset =  tf.data.Dataset.from_tensor_slices(({'input_ids': all_input_ids, 'attention_mask': all_input_masks}, all_labels))
+    if shuffle:
+        dataset = dataset.shuffle(1024, reshuffle_each_iteration = True)
+    dataset = dataset.batch(batch_size, drop_remainder = True)
+    dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
-def tokenize_t5_dpgnews_df(df: pd.DataFrame, max_len: int, max_label_len: int, tokenizer: AutoTokenizer)->Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    return dataset
+
+def create_t5_dataset(df: pd.DataFrame, max_len: int, max_label_len: int, tokenizer: AutoTokenizer, batch_size: int, shuffle = False)->tf.data.Dataset:
     total_samples = df.shape[0]
 
     # Placeholders input
-    input_ids = np.zeros((total_samples, max_len), dtype = 'int32')
-    input_masks = np.zeros((total_samples, max_len), dtype = 'int32')
-
+    input_ids, input_masks = [], []
+    
     # Placeholders output
-    output_ids = np.zeros((total_samples, max_label_len), dtype = 'int32')
-    output_masks = np.zeros((total_samples, max_label_len), dtype = 'int32')
-    labels = np.zeros((total_samples, ), dtype = 'int32')
+    output_ids, output_masks, labels = [], [], []
 
+    # Tokenize
     for index, row in tqdm(zip(range(0, total_samples), df.iterrows()), total = total_samples):
         
         # Get title and description as strings
@@ -103,42 +112,28 @@ def tokenize_t5_dpgnews_df(df: pd.DataFrame, max_len: int, max_label_len: int, t
         
         # Process Input
         input_encoded = tokenizer.encode_plus('classificeer: ' + text, add_special_tokens = True, max_length = max_len, truncation = True, padding = 'max_length')
-        input_ids[index,:] = input_encoded['input_ids']
-        input_masks[index,:] = input_encoded['attention_mask']
+        input_ids.append(input_encoded['input_ids'])
+        input_masks.append(input_encoded['attention_mask'])
 
         # Process Output
-        labels[index] = 1 if partisan == 'true' else 0
+        labels.append(1 if partisan == 'true' else 0)
         partisan_label = 'politiek' if partisan == 'true' else 'neutraal'
         output_encoded = tokenizer.encode_plus(partisan_label, add_special_tokens = True, max_length = max_label_len, truncation = True, padding = 'max_length')
-        output_ids[index,:] = output_encoded['input_ids']
-        output_masks[index,:] = output_encoded['attention_mask']
+        output_ids.append(output_encoded['input_ids'])
+        output_masks.append(output_encoded['attention_mask'])
 
-    # Return Arrays
-    return (input_ids, input_masks, output_ids, output_masks, labels)
-
-def create_dataset(input_ids: np.ndarray, input_masks: np.ndarray, labels: np.ndarray)->tf.data.Dataset:
-    return tf.data.Dataset.from_tensor_slices(({'input_ids': input_ids, 'attention_mask': input_masks}, labels))
-
-def create_train_dataset(input_ids: np.ndarray, input_masks: np.ndarray, labels: np.ndarray, batch_size: int)->tf.data.Dataset:
-    train_dataset = create_dataset(input_ids, input_masks, labels)
-    train_dataset = train_dataset.shuffle(1024, reshuffle_each_iteration = True)
-    train_dataset = train_dataset.batch(batch_size)
-    train_dataset = train_dataset.repeat(-1)
-    train_dataset = train_dataset.prefetch(1024)
-
-    return train_dataset
-
-def create_validation_dataset(input_ids: np.ndarray, input_masks: np.ndarray, labels: np.ndarray, batch_size: int)->tf.data.Dataset:
-    validation_dataset = create_dataset(input_ids, input_masks, labels)
-    validation_dataset = validation_dataset.batch(batch_size)
-    validation_dataset = validation_dataset.repeat(-1)
-    validation_dataset = validation_dataset.prefetch(1024)
-
-    return validation_dataset
-
-def create_svc_dataset(input_ids: np.ndarray, input_masks: np.ndarray, labels: np.ndarray, batch_size: int)->tf.data.Dataset:
-    dataset = create_dataset(input_ids, input_masks, labels)
-    dataset = dataset.batch(batch_size)
-    dataset = dataset.prefetch(1024)
+    # Prepare and Create TF Dataset.
+    all_input_ids = tf.constant(input_ids)
+    all_output_ids = tf.constant(output_ids)
+    all_input_masks = tf.constant(input_masks)
+    all_output_masks = tf.constant(output_masks)
+    dataset =  tf.data.Dataset.from_tensor_slices(({'input_ids': all_input_ids, 
+                                                    'labels': all_output_ids, 
+                                                    'attention_mask': all_input_masks, 
+                                                    'decoder_attention_mask': all_output_masks}))
+    if shuffle:
+        dataset = dataset.shuffle(1024, reshuffle_each_iteration = True)
+    dataset = dataset.batch(batch_size, drop_remainder = True)
+    dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
     return dataset

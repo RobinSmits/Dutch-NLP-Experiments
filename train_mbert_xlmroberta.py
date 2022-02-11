@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np 
 import tensorflow as tf
 from sklearn.model_selection import train_test_split, StratifiedKFold
+from sklearn.metrics import classification_report
 from tqdm import tqdm
 from transformers import *
 
@@ -12,16 +13,18 @@ from dataset import *
 from models import *
 from utils import *
 
-# Configure Strategy. Assume TPU...if not set default for GPU/CPU
+# Configure Strategy. Assume TPU...if not set default for GPU
 tpu = None
 try:
     tpu = tf.distribute.cluster_resolver.TPUClusterResolver()
     tf.config.experimental_connect_to_cluster(tpu)
     tf.tpu.experimental.initialize_tpu_system(tpu)
     strategy = tf.distribute.experimental.TPUStrategy(tpu)
-except ValueError:
-    # tf.config.set_visible_devices([], 'GPU') # Uncomment to force tensorflow to use CPU instead of GPU
+except:
     strategy = tf.distribute.get_strategy()
+
+# Uncomment .. For TF Debugging
+# tf.config.run_functions_eagerly(True)
 
 # Constants
 MAX_LEN = 512
@@ -55,9 +58,6 @@ print(f'Use Standard Model: {use_standard_model}')
 print(f'Use Default Model Weights: {use_default_weights}')
 print(f'Custom Pretrained Model Checkpoint: {custom_pretrained_model_checkpoint}')
 
-# Set Autotune
-AUTO = tf.data.experimental.AUTOTUNE
-
 # Set Batch Size
 BASE_BATCH_SIZE = 4         # Modify to match your GPU card.
 if tpu is not None:         
@@ -84,14 +84,6 @@ download_articles_by_publisher(CACHE_DIR)
 # Get DpgNews Dataframe
 dpgnews_df = get_dpgnews_df(CACHE_DIR)
 
-# Perform tokenization and labelling
-input_ids, input_masks, labels = tokenize_dpgnews_df(dpgnews_df, MAX_LEN, tokenizer)
-
-# Summary
-print(f'\nInput Ids Shape: {input_ids.shape}')
-print(f'Input Masks Shape: {input_masks.shape}')
-print(f'Labels Shape: {labels.shape}')
-
 # Accuracy PlaceHoler
 val_acc_list = []
 
@@ -104,7 +96,7 @@ for seed in SEEDS:
     folds = StratifiedKFold(n_splits = FOLD_SPLITS, shuffle = True, random_state = seed)
 
     # Loop through Folds
-    for fold, (train_index, val_index) in enumerate(folds.split(input_ids, labels)):
+    for fold, (train_index, val_index) in enumerate(folds.split(dpgnews_df, dpgnews_df.partisan.values)):
         # START        
         print(f'\n================================ FOLD {fold} === SEED {seed}')
         
@@ -117,20 +109,8 @@ for seed in SEEDS:
         # Show Indexes
         print(train_index[:10])
         print(val_index[:10])
-
-        # Create Train and Validation Array sets
-        train_input_ids, train_input_masks, train_labels = input_ids[train_index], input_masks[train_index], labels[train_index]
-        val_input_ids, val_input_masks, val_labels = input_ids[val_index], input_masks[val_index], labels[val_index]
- 
-        # Show Sizes
-        print(f'Train Shape: {train_input_ids.shape}')
-        print(f'Validation Shape: {val_input_ids.shape}')
-
-        # Create Train Dataset
-        train_dataset = create_train_dataset(train_input_ids, train_input_masks, train_labels, BATCH_SIZE)
-
-        # Create Validation Dataset
-        validation_dataset = create_validation_dataset(val_input_ids, val_input_masks, val_labels, BATCH_SIZE)
+        train_df = dpgnews_df.iloc[train_index]
+        val_df = dpgnews_df.iloc[val_index]
 
         # Create Model
         if model_type == 'xlm-roberta-base' and use_standard_model == True:
@@ -146,9 +126,13 @@ for seed in SEEDS:
         if fold == 0: # Only need to show Model Summary once...
             model.summary()
 
+        # Create Train and Validation Datasets
+        train_dataset = create_dataset(train_df, MAX_LEN, tokenizer, BATCH_SIZE, shuffle = True)
+        validation_dataset = create_dataset(val_df, MAX_LEN, tokenizer, BATCH_SIZE, shuffle = False)
+
         # Steps
-        train_steps = train_input_ids.shape[0] // BATCH_SIZE
-        val_steps = val_input_ids.shape[0] // BATCH_SIZE
+        train_steps = train_df.shape[0] // BATCH_SIZE
+        val_steps = val_df.shape[0] // BATCH_SIZE
         total_steps = train_steps * EPOCHS
         print(f'Train Steps: {train_steps}')
         print(f'Val Steps: {val_steps}')
@@ -168,6 +152,18 @@ for seed in SEEDS:
         eval = model.evaluate(validation_dataset, steps = val_steps, verbose = VERBOSE)
         val_acc_list.append(eval[1])
         print(f'\n================================ Detection Accuracy: {eval[1] * 100}%\n')
+
+        # Classification Report
+        preds = model.predict(validation_dataset, verbose = VERBOSE)
+        print(f'\n================================ Classification Report')
+        if use_standard_model:
+            print(classification_report(np.hstack([label.numpy() for example, label in validation_dataset]), preds.logits.argmax(axis = 1)))
+        else:
+            print(classification_report(np.hstack([label.numpy() for example, label in validation_dataset]), preds.argmax(axis = 1)))
+            
+        # Cleanup
+        del train_df, val_df, train_dataset, validation_dataset, model
+        gc.collect()
 
 # Summary
 print(f'Final Mean Accuracy for Multiple Seeds / Fold CV Training: {np.mean(val_acc_list)}')
