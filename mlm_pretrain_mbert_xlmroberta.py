@@ -1,9 +1,12 @@
 # Import Modules
-import pandas as pd
-import numpy as np 
 from sklearn.model_selection import train_test_split
-from tqdm import tqdm
-from transformers import *
+from transformers import (AutoConfig,
+                          AutoTokenizer,
+                          AutoModelForMaskedLM,
+                          LineByLineTextDataset,
+                          DataCollatorForLanguageModeling,
+                          TrainingArguments,
+                          Trainer)
 
 # Custom Code
 from dataset import *
@@ -17,10 +20,11 @@ SEED = 1000
 LR = 0.000015
 TEST_SIZE = 0.10
 
-# Set Model Type .. Set to the following:
-# 1. 'bert-base-multilingual-cased'    for Multilingual BERT model
-# 2. 'xlm-roberta-base'                for Multi-lingual XLM-RoBERTa model
-model_type = 'xlm-roberta-base'
+# Set Model Type for Base Model to use
+    # 1. 'bert-base-multilingual-cased'        for Multi-lingual BERT model
+    # 2. 'distilbert-base-multilingual-cased'  for Multi-lingual DistilBert model
+    # 3. 'xlm-roberta-base'                    for Multi-lingual XLM-RoBERTa model
+model_type = 'distilbert-base-multilingual-cased'
 print(f'Model Type: {model_type}')
 
 # Set Config
@@ -78,7 +82,8 @@ training_args = TrainingArguments(output_dir = f'./mlm_pretrain/{model_type}/',
                                   per_device_train_batch_size = 2,
                                   per_device_eval_batch_size = 2,
                                   evaluation_strategy = 'steps',
-                                  save_total_limit = 1,
+                                  save_total_limit = 3,
+                                  save_steps = 1000,
                                   eval_steps = 1000,
                                   metric_for_best_model = 'eval_loss',
                                   greater_is_better = False,

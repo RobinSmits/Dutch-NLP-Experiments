@@ -1,12 +1,9 @@
 # Import Modules
 import gc
-import pandas as pd
 import numpy as np 
 import tensorflow as tf
 from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.metrics import classification_report
-from tqdm import tqdm
-from transformers import *
 
 # Custom Code
 from dataset import *
@@ -23,9 +20,6 @@ try:
 except:
     strategy = tf.distribute.get_strategy()
 
-# Uncomment .. For TF Debugging
-# tf.config.run_functions_eagerly(True)
-
 # Constants
 MAX_LEN = 512
 FOLD_SPLITS = 5
@@ -38,17 +32,21 @@ SEEDS = [*range(1000, 1003, 1)]
 
 ################## MODEL SETTINGS ###########################################################################
 # Set Model Type for Base Model to use
-    # 1. 'bert-base-multilingual-cased'    for Multilingual BERT model
-    # 2. 'xlm-roberta-base'                for Multi-lingual XLM-RoBERTa model
-model_type = 'bert-base-multilingual-cased'
+    # 1. 'bert-base-multilingual-cased'        for Multi-lingual BERT model
+    # 2. 'distilbert-base-multilingual-cased'  for Multi-lingual DistilBert model
+    # 3. 'xlm-roberta-base'                    for Multi-lingual XLM-RoBERTa model
+model_type = 'distilbert-base-multilingual-cased'
+
 # Set Model Architecture (Standard or Custom Sequence Classifier) 
     # True = Standard Sequence Classifier
     # False = Custom Sequence Classifier
 use_standard_model = True
+
 # Set Model Weights Type (Use Standard or Custom Pretrained on DPGNews Dataset) 
     # True = Default Model Weights as available from Huggingface Transformers
     # False = Custom Pretrained MLM model weights (pretrained with script: mlm_pretrain_mbert_xlmroberta.py)
 use_default_weights = True
+
 # Set Custom Pretrained Model Checkpoint Path (Used if 'use_default_model_weights = True)
 custom_pretrained_model_checkpoint = './mlm_pretrain/bert-base-multilingual-cased/checkpoint-11000'
 
@@ -121,6 +119,11 @@ for seed in SEEDS:
             model = create_mbert_model_v1(use_default_weights, custom_pretrained_model_checkpoint, strategy, config, LR)
         if model_type == 'bert-base-multilingual-cased' and use_standard_model == False:
             model = create_mbert_model_v2(use_default_weights, custom_pretrained_model_checkpoint, strategy, config, MAX_LEN, LR)
+        if model_type == 'distilbert-base-multilingual-cased' and use_standard_model == True:
+            model = create_distilmbert_model_v1(use_default_weights, custom_pretrained_model_checkpoint, strategy, config, LR)
+        if model_type == 'distilbert-base-multilingual-cased' and use_standard_model == False:
+            model = create_distilmbert_model_v2(use_default_weights, custom_pretrained_model_checkpoint, strategy, config, MAX_LEN, LR)
+
 
         # Model Summary
         if fold == 0: # Only need to show Model Summary once...
@@ -140,12 +143,12 @@ for seed in SEEDS:
 
         # Fit Model
         model.fit(train_dataset,
-                steps_per_epoch = train_steps,
-                validation_data = validation_dataset,
-                validation_steps = val_steps,
-                epochs = EPOCHS, 
-                verbose = VERBOSE,
-                callbacks = [ModelCheckpoint(f'{WORK_DIR}model.h5')])
+                  steps_per_epoch = train_steps,
+                  validation_data = validation_dataset,
+                  validation_steps = val_steps,
+                  epochs = EPOCHS, 
+                  verbose = VERBOSE,
+                  callbacks = [ModelCheckpoint(f'{WORK_DIR}model.h5')])
 
         # Evaluate Dataset
         model.load_weights(f'{WORK_DIR}model.h5') # Reload the Best Model

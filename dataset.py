@@ -8,6 +8,10 @@ from typing import Tuple
 from urllib.request import urlopen
 
 def download_articles_by_publisher(cache_dir: str)->None:
+    # Dataset Message!!
+    print('!!! THE REQUIRED FILES ARE NO LONGER AVAILABLE FROM THE ORIGINAL DATASET !!!')
+    print('!!! DOWNLOAD THEM FROM MY KAGGLE DATASET: https://www.kaggle.com/datasets/rsmits/dpgmedia2019 !!!')
+
     # URLs taken from: https://github.com/dpgmedia/partisan-news2019
     articles_by_publisher_url = 'https://partisan-news2019.s3-eu-west-1.amazonaws.com/dpgMedia2019-articles-bypublisher.jsonl'
     labels_by_publisher_url = 'https://github.com/dpgmedia/partisan-news2019/raw/master/dpgMedia2019-labels-bypublisher.jsonl'
@@ -83,12 +87,12 @@ def create_dataset(df: pd.DataFrame, max_len: int, tokenizer: AutoTokenizer, bat
         labels.append(1 if partisan == 'true' else 0)
 
     # Prepare and Create TF Dataset.
-    all_input_ids = tf.constant(input_ids)
-    all_input_masks = tf.constant(input_masks)
-    all_labels = tf.constant(labels)
+    all_input_ids = tf.Variable(input_ids)
+    all_input_masks = tf.Variable(input_masks)
+    all_labels = tf.Variable(labels)
     dataset =  tf.data.Dataset.from_tensor_slices(({'input_ids': all_input_ids, 'attention_mask': all_input_masks}, all_labels))
     if shuffle:
-        dataset = dataset.shuffle(1024, reshuffle_each_iteration = True)
+        dataset = dataset.shuffle(128, reshuffle_each_iteration = True)
     dataset = dataset.batch(batch_size, drop_remainder = True)
     dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
