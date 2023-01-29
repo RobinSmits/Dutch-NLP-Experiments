@@ -1,18 +1,16 @@
 # Import Modules
 import gc
-import pandas as pd
 import numpy as np 
 import tensorflow as tf
 from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.metrics import classification_report
 from sklearn.svm import LinearSVC
-from tqdm import tqdm
-from transformers import *
+from transformers import AutoConfig, AutoTokenizer
 
 # Custom Code
-from dataset import *
-from models import *
-from utils import *
+from dataset import download_articles_by_publisher, get_dpgnews_df, create_dataset
+from models import create_mbert_model_v3, create_distilmbert_model_v3, create_xlm_roberta_model_v3
+from utils import set_seeds
 
 # Configure Strategy. Assume TPU...if not set default for GPU
 tpu = None
@@ -34,9 +32,10 @@ SEEDS = [*range(1000, 1003, 1)]
 
 ################## MODEL SETTINGS ###########################################################################
 # Set Model Type for Base Model to use
-    # 1. 'bert-base-multilingual-cased'    for Multilingual BERT model
-    # 2. 'xlm-roberta-base'                for Multi-lingual XLM-RoBERTa model
-model_type = 'xlm-roberta-base'
+    # 1. 'bert-base-multilingual-cased'        for Multi-lingual BERT model
+    # 2. 'distilbert-base-multilingual-cased'  for Multi-lingual DistilBert model
+    # 3. 'xlm-roberta-base'                    for Multi-lingual XLM-RoBERTa model
+model_type = 'distilbert-base-multilingual-cased'
 
 # Model Summary
 print(f'Model Type: {model_type}')
@@ -71,6 +70,7 @@ dpgnews_df = get_dpgnews_df(CACHE_DIR)
 # I modify the model to use the last hidden states layer to generate the feature vector.
 # Different hidden states layers ( or combinations of hidden states layers) can be used to generate feature vectors.
 if model_type == 'bert-base-multilingual-cased': feature_extraction_model = create_mbert_model_v3(model_type, strategy, config, MAX_LEN)
+if model_type == 'distilbert-base-multilingual-cased': feature_extraction_model = create_distilmbert_model_v3(model_type, strategy, config, MAX_LEN)
 if model_type == 'xlm-roberta-base': feature_extraction_model = create_xlm_roberta_model_v3(model_type, strategy, config, MAX_LEN)
 feature_extraction_model.summary()
 

@@ -74,9 +74,9 @@ Both XLM-RoBERTa and MBERT score slightly higher when first pre-trained and than
 | DistilMBERT Standard Sequence Classification Model | 95.23 |
 | DistilMBERT Custom Sequence Classification Model | 95.17  |
 
-## Multi-Lingual BERT and XLM-RoBERTa Feature Extractors and Support Vector Machine as classifier
+## Multi-Lingual BERT. DistilBERT and XLM-RoBERTa Feature Extractors and Support Vector Machine as classifier
 
-In the third part of my experiments I use MBERT and XLM-RoBERTa as feature extractors. The models are not finetuned on the DPGNews dataset. They are just used - with the default model weights - to generate feature vectors. The models are modified so that the weights of the last hidden state layer can be used as those feature vectors.
+In the third part of my experiments I use MBERT, DistilMBERT and XLM-RoBERTa as feature extractors. The models are not finetuned on the DPGNews dataset. They are just used - with the default model weights - to generate feature vectors. The models are modified so that the weights of the last hidden state layer can be used as those feature vectors.
 
 The feature vectors are then used to fit a LinearSVC (Support Vector Machine) model. For this we again perform 3 rounds of 5 Fold Cross Validation training. The average accuracy of classification is based on those 3 rounds with 5 Fold CV.
 
@@ -86,6 +86,7 @@ The python script to run for the feature extraction + SVM classification is 'svm
 |:---------------|----------------:|
 | MBERT Feature Extraction Model | 86.27 |
 | XLM-RoBERTa Feature Extraction Model | 88.17 |
+| DistilMBERT Feature Extraction Model | 85.84 |
 
 ## Fine-tuning mT5 and ByT5
 
