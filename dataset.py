@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+from datasets import Dataset, DatasetDict
 from tqdm import tqdm
 from transformers import AutoTokenizer
 from typing import Tuple
@@ -139,5 +140,21 @@ def create_t5_dataset(df: pd.DataFrame, max_len: int, max_label_len: int, tokeni
         dataset = dataset.shuffle(1024, reshuffle_each_iteration = True)
     dataset = dataset.batch(batch_size, drop_remainder = True)
     dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
+
+    return dataset
+
+def create_dataset_for_pretraining(tokenizer: AutoTokenizer, train_df: pd.DataFrame, val_df: pd.DataFrame)->Dataset:
+    def tokenizer_function(examples):
+        return tokenizer(examples["text"], truncation = True)
+
+    traindf = pd.DataFrame({"text": train_df.text.values})
+    valdf = pd.DataFrame({"text": val_df.text.values})
+    trainds = Dataset.from_pandas(traindf)
+    valds = Dataset.from_pandas(valdf)
+
+    dataset = DatasetDict()
+    dataset['train'] = trainds
+    dataset['validation'] = valds
+    dataset = dataset.map(tokenizer_function, batched = True)
 
     return dataset

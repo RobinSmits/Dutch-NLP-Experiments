@@ -3,7 +3,6 @@ from sklearn.model_selection import train_test_split
 from transformers import (AutoConfig,
                           AutoTokenizer,
                           AutoModelForMaskedLM,
-                          LineByLineTextDataset,
                           DataCollatorForLanguageModeling,
                           TrainingArguments,
                           Trainer)
@@ -39,38 +38,22 @@ print(tokenizer)
 model = AutoModelForMaskedLM.from_pretrained(model_type)
 
 # Download DpgNews Files
-download_articles_by_publisher(CACHE_DIR)
-
+# As explained in the Readme.md the required files are only available on: https://www.kaggle.com/datasets/rsmits/dpgmedia2019
+# Make sure they are located in: CACHE_DIR
+# download_articles_by_publisher(CACHE_DIR)
 # Get DpgNews Dataframe
 dpgnews_df = get_dpgnews_df(CACHE_DIR)
 
 # Split into Train and Validation
 train_df, val_df = train_test_split(dpgnews_df, test_size = TEST_SIZE, random_state = SEED, shuffle = True)
 
-# Save Train Text File
-with open('train_text.txt', 'w', encoding = 'utf-8') as f:
-    for line in train_df.text.values.tolist():
-        f.write(line + '\n')
-    
-# Save Validation Text File
-with open('val_text.txt', 'w', encoding = 'utf-8') as f:
-    for line in val_df.text.values.tolist():
-        f.write(line + '\n')
-
-# Create Train Dataset
-train_dataset = LineByLineTextDataset(tokenizer = tokenizer,
-                                      file_path = 'train_text.txt',
-                                      block_size = MAX_LEN)
-
-# Create Validation Dataset
-valid_dataset = LineByLineTextDataset(tokenizer = tokenizer,
-                                      file_path = 'val_text.txt',
-                                      block_size = MAX_LEN)
-
 # Create Data Collator
 datacollator = DataCollatorForLanguageModeling(tokenizer = tokenizer, 
                                                mlm = True, 
                                                mlm_probability = 0.15)
+
+# Create dataset
+ds = create_dataset_for_pretraining(tokenizer, train_df, val_df)
 
 # Set Training Arguments
 training_args = TrainingArguments(output_dir = f'./mlm_pretrain/{model_type}/',
@@ -94,8 +77,8 @@ training_args = TrainingArguments(output_dir = f'./mlm_pretrain/{model_type}/',
 trainer = Trainer(model = model,
                   args = training_args,
                   data_collator = datacollator,
-                  train_dataset = train_dataset,
-                  eval_dataset = valid_dataset)
+                  train_dataset = ds['train'],
+                  eval_dataset = ds['validation'])
 
 # Train MLM Model
 trainer.train()
